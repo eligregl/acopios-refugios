@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vista de prueba — Venezuela Resiste</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Leaflet: mapa gratis, sin clave ni tarjeta -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Solo para la vista de prueba */
+    .preview-flag {
+      background: var(--amarillo); color: var(--fondo);
+      font-family: var(--font-mono); font-size: .68rem; font-weight: 600;
+      text-align: center; padding: .35rem 1rem; letter-spacing: .03em;
+    }
+    /* Leaflet dentro del tema oscuro */
+    .leaflet-container { background: var(--fondo); }
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="preview-flag">VISTA DE PRUEBA · datos de ejemplo · no es el sitio publicado</div>
+
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-flag">🇻🇪</span>
+        <div>
+          <h1>Venezuela Resiste</h1>
+          <p class="brand-sub">Mapa colaborativo · Terremoto 24 jun 2026</p>
+        </div>
+      </div>
+      <button class="btn-report" id="openModalBtn">+ Reportar punto</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="filters">
+        <button class="filter-btn active" data-type="all">Todos</button>
+        <button class="filter-btn" data-type="acopio"><span class="dot dot-acopio"></span> Acopios</button>
+        <button class="filter-btn" data-type="refugio"><span class="dot dot-refugio"></span> Refugios</button>
+      </div>
+      <div class="list-header">
+        <span id="countLabel">Cargando...</span>
+        <span class="list-hint">Haz clic para centrar</span>
+      </div>
+      <ul class="point-list" id="pointList"></ul>
+      <div class="sidebar-footer">
+        <p>Acopios al instante con sello "sin verificar". Refugios revisados antes. Esta es una demo local.</p>
+      </div>
+    </aside>
+
+    <main class="map-container">
+      <div id="map"></div>
+      <div class="map-legend">
+        <span><span class="dot dot-acopio"></span> Acopio</span>
+        <span><span class="dot dot-refugio"></span> Refugio</span>
+        <span><span class="dot dot-unv-legend"></span> Sin verificar</span>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Reportar un punto</h2>
+        <button class="modal-close" id="closeModalBtn">✕</button>
+      </div>
+      <p class="modal-note">Demo: lo que envíes se agrega solo a este mapa de prueba, en tu navegador. No se guarda en ningún lado.</p>
+      <form id="reportForm">
+        <div class="hp" aria-hidden="true">
+          <label for="website">No llenar</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="tipo">Tipo de punto *</label>
+          <select id="tipo" required>
+            <option value="">Selecciona...</option>
+            <option value="acopio">Centro de acopio</option>
+            <option value="refugio">Refugio disponible</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="nombre">Nombre del lugar *</label>
+          <input type="text" id="nombre" placeholder="Ej: Escuela Simón Bolívar" required />
+        </div>
+        <div class="form-group">
+          <label for="estado">Estado *</label>
+          <select id="estado" required>
+            <option value="">Selecciona...</option>
+            <option>Carabobo</option><option>Yaracuy</option><option>Aragua</option>
+            <option>Cojedes</option><option>Falcón</option><option>Lara</option>
+            <option>Portuguesa</option><option>Miranda</option>
+            <option>Caracas (Distrito Capital)</option><option>La Guaira (Vargas)</option>
+            <option>Trujillo</option><option>Otro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="direccion">Dirección o referencia *</label>
+          <input type="text" id="direccion" placeholder="Ej: Av. Bolívar, frente al mercado" required />
+        </div>
+        <div class="form-group">
+          <label>Marca el punto en el mapa *</label>
+          <div id="reportMap" class="report-map"></div>
+          <p class="report-map-note" id="reportMapNote">Toca el mapa donde queda el punto.</p>
+          <input type="hidden" id="lat" /><input type="hidden" id="lng" />
+        </div>
+        <div class="form-group">
+          <label for="contacto">Contacto (teléfono o Instagram)</label>
+          <input type="text" id="contacto" placeholder="@organizacion o 0412-000-0000" />
+        </div>
+        <div class="form-group" id="acopioFields">
+          <label for="necesidades">¿Qué están recibiendo?</label>
+          <textarea id="necesidades" rows="2" placeholder="agua, medicamentos, ropa..."></textarea>
+        </div>
+        <div class="form-group" id="refugioFields" style="display:none">
+          <label for="capacidad">Capacidad aproximada</label>
+          <input type="text" id="capacidad" placeholder="Ej: 40 personas" />
+        </div>
+        <div class="form-group">
+          <label for="fuente">¿Cómo lo verificaste? *</label>
+          <input type="text" id="fuente" placeholder="Fui personalmente, me lo dijo alguien de confianza..." required />
+        </div>
+        <button type="submit" class="btn-submit" id="submitBtn">Enviar reporte</button>
+        <p class="form-disclaimer">En el sitio real, los refugios se revisan antes de publicarse.</p>
+      </form>
+      <div class="form-success" id="formSuccess" style="display:none">
+        <div class="success-icon">✓</div>
+        <h3>Reporte recibido</h3>
+        <p id="successMsg">Gracias por ayudar.</p>
+        <button class="btn-report" id="newReportBtn">Reportar otro punto</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  // ===== Datos de ejemplo (solo para esta vista) =====
+  const SAMPLE = [
+    { tipo:'acopio', nombre:'Iglesia San José', estado:'Carabobo', direccion:'Av. Bolívar, al lado de la plaza', lat:10.168, lng:-68.005, contacto:'@parroquiasanjose', necesidades:'agua, alimentos no perecederos, pañales', capacidad:'', estado_moderacion:'aprobado' },
+    { tipo:'acopio', nombre:'Liceo Andrés Bello', estado:'Aragua', direccion:'Calle 5, frente al mercado', lat:10.246, lng:-67.596, contacto:'0412-1234567', necesidades:'medicamentos, ropa limpia', capacidad:'', estado_moderacion:'por_verificar' },
+    { tipo:'refugio', nombre:'Polideportivo Municipal', estado:'Carabobo', direccion:'Sector Norte, entrada principal', lat:10.205, lng:-68.010, contacto:'@proteccioncivil', necesidades:'', capacidad:'120 personas', estado_moderacion:'aprobado' },
+    { tipo:'refugio', nombre:'Escuela Simón Rodríguez', estado:'Yaracuy', direccion:'Vía San Felipe, km 3', lat:10.330, lng:-68.740, contacto:'', necesidades:'', capacidad:'60 personas', estado_moderacion:'aprobado' },
+  ];
+
+  const CENTER = [10.2, -67.9], ZOOM = 8;
+  let points = SAMPLE.slice();
+  let activeFilter = 'all';
+  let map, reportMap, reportMarker, layer;
+
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  const tipoDe = p => (p.tipo||'').toLowerCase();
+  const isUnverified = p => (p.estado_moderacion||'').toLowerCase() !== 'aprobado';
+  const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  const ATTR = '&copy; OpenStreetMap &copy; CARTO';
+
+  map = L.map('map', { zoomControl:true }).setView(CENTER, ZOOM);
+  L.tileLayer(TILE, { attribution: ATTR, maxZoom: 19 }).addTo(map);
+  layer = L.layerGroup().addTo(map);
+
+  function color(p){ if(isUnverified(p)) return '#7A95B0'; return tipoDe(p)==='acopio' ? '#F4C430' : '#3FBFA6'; }
+
+  function render(){
+    const filtered = activeFilter==='all' ? points : points.filter(p=>tipoDe(p)===activeFilter);
+    layer.clearLayers();
+    filtered.forEach(p=>{
+      const m = L.circleMarker([p.lat,p.lng], { radius:8, fillColor:color(p), fillOpacity:1, color:'#0F1923', weight:2 });
+      const badge = isUnverified(p) ? ' <span style="background:#7A95B0;color:#0F1923;font-size:9px;padding:1px 5px;border-radius:2px">SIN VERIFICAR</span>' : '';
+      const icon = tipoDe(p)==='acopio' ? '📦' : '🏠';
+      m.bindPopup(
+        '<div style="font-family:sans-serif;max-width:220px"><strong>'+icon+' '+esc(p.nombre)+'</strong>'+badge+
+        '<p style="font-size:11px;color:#666;margin:4px 0">'+esc(p.estado)+' — '+esc(p.direccion)+'</p>'+
+        (p.necesidades?'<p style="font-size:11px;margin:4px 0"><b>Reciben:</b> '+esc(p.necesidades)+'</p>':'')+
+        (p.capacidad?'<p style="font-size:11px;margin:4px 0"><b>Capacidad:</b> '+esc(p.capacidad)+'</p>':'')+
+        (p.contacto?'<p style="font-size:11px;color:#2563A8;margin:4px 0">'+esc(p.contacto)+'</p>':'')+'</div>'
+      );
+      m.addTo(layer);
+    });
+    renderList(filtered);
+    document.getElementById('countLabel').textContent = filtered.length+' punto'+(filtered.length!==1?'s':'');
+  }
+
+  function renderList(arr){
+    const list = document.getElementById('pointList');
+    if(!arr.length){ list.innerHTML = '<li class="loading-item">No hay puntos con este filtro.</li>'; return; }
+    list.innerHTML = arr.map(p=>{
+      const unv = isUnverified(p);
+      const dot = tipoDe(p)==='acopio' ? 'dot-acopio' : 'dot-refugio';
+      return '<li class="point-item '+(unv?'por-verificar':'')+'" data-lat="'+p.lat+'" data-lng="'+p.lng+'">'+
+        '<div class="point-item-header"><span class="dot '+dot+(unv?' dot-unv':'')+'"></span>'+
+        '<span class="point-name">'+esc(p.nombre)+'</span>'+(unv?'<span class="badge-verificar">sin verificar</span>':'')+'</div>'+
+        '<div class="point-estado">'+esc(p.estado)+'</div>'+
+        '<div class="point-detail">'+esc(p.direccion)+(p.necesidades?' · '+esc(p.necesidades):'')+(p.capacidad?' · Cap: '+esc(p.capacidad):'')+'</div>'+
+        (p.contacto?'<div class="point-contact">'+esc(p.contacto)+'</div>':'')+'</li>';
+    }).join('');
+    list.querySelectorAll('.point-item').forEach(li=>{
+      li.addEventListener('click', ()=> map.setView([+li.dataset.lat, +li.dataset.lng], 14));
+    });
+  }
+
+  document.querySelectorAll('.filter-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); activeFilter = btn.dataset.type; render();
+    });
+  });
+
+  // Modal
+  const overlay = document.getElementById('modalOverlay');
+  document.getElementById('openModalBtn').addEventListener('click', ()=>{ overlay.classList.add('open'); initReportMap(); });
+  document.getElementById('closeModalBtn').addEventListener('click', ()=> overlay.classList.remove('open'));
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.classList.remove('open'); });
+  document.getElementById('tipo').addEventListener('change', function(){
+    document.getElementById('acopioFields').style.display = this.value==='acopio'?'block':'none';
+    document.getElementById('refugioFields').style.display = this.value==='refugio'?'block':'none';
+  });
+
+  function initReportMap(){
+    if(reportMap){ setTimeout(()=>reportMap.invalidateSize(), 100); return; }
+    reportMap = L.map('reportMap', { zoomControl:true, attributionControl:false }).setView(CENTER, 8);
+    L.tileLayer(TILE, { maxZoom:19 }).addTo(reportMap);
+    reportMap.on('click', e=>{
+      if(reportMarker) reportMarker.setLatLng(e.latlng);
+      else reportMarker = L.marker(e.latlng, { draggable:true }).addTo(reportMap)
+        .on('dragend', ev=> writeCoords(ev.target.getLatLng()));
+      writeCoords(e.latlng);
+      document.getElementById('reportMapNote').textContent = 'Punto marcado. Arrástralo para ajustar.';
+    });
+    setTimeout(()=>reportMap.invalidateSize(), 100);
+  }
+  function writeCoords(ll){ document.getElementById('lat').value = ll.lat; document.getElementById('lng').value = ll.lng; }
+
+  document.getElementById('reportForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    if(document.getElementById('website').value){ return; }
+    const lat = document.getElementById('lat').value, lng = document.getElementById('lng').value;
+    if(!lat||!lng){ alert('Marca el punto en el mapa antes de enviar.'); return; }
+    const tipo = document.getElementById('tipo').value;
+    const nuevo = {
+      tipo, nombre:document.getElementById('nombre').value, estado:document.getElementById('estado').value,
+      direccion:document.getElementById('direccion').value, lat:+lat, lng:+lng,
+      contacto:document.getElementById('contacto').value, necesidades:document.getElementById('necesidades').value,
+      capacidad:document.getElementById('capacidad').value,
+      estado_moderacion: tipo==='acopio' ? 'por_verificar' : 'pendiente',
+    };
+    // En la demo, el acopio aparece de una; el refugio quedaría oculto a revisión
+    if(tipo==='acopio'){ points.push(nuevo); render(); }
+    document.getElementById('reportForm').style.display='none';
+    document.getElementById('formSuccess').style.display='block';
+    document.getElementById('successMsg').textContent = tipo==='acopio'
+      ? 'Mira el mapa: ya aparece con el sello gris "sin verificar".'
+      : 'En el sitio real, un voluntario lo revisaría antes de publicarlo. En esta demo no se muestra.';
+  });
+  document.getElementById('newReportBtn').addEventListener('click', ()=>{
+    const f = document.getElementById('reportForm'); f.reset();
+    if(reportMarker){ reportMap.removeLayer(reportMarker); reportMarker=null; }
+    document.getElementById('lat').value=''; document.getElementById('lng').value='';
+    document.getElementById('reportMapNote').textContent='Toca el mapa donde queda el punto.';
+    document.getElementById('acopioFields').style.display='block';
+    document.getElementById('refugioFields').style.display='none';
+    f.style.display='block'; document.getElementById('formSuccess').style.display='none';
+  });
+
+  render();
+  </script>
+</body>
+</html>

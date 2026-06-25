@@ -1,0 +1,9 @@
+# Sistema
+.DS_Store
+*.log
+
+# Vercel
+.vercel
+
+# Dependencias (por si más adelante usas alguna herramienta)
+node_modules/

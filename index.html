@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Venezuela Resiste — Acopios y Refugios</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-flag">🇻🇪</span>
+        <div>
+          <h1>Venezuela Resiste</h1>
+          <p class="brand-sub">Mapa colaborativo · Terremoto 24 jun 2026</p>
+        </div>
+      </div>
+      <button class="btn-report" id="openModalBtn">+ Reportar punto</button>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="filters">
+        <button class="filter-btn active" data-type="all">Todos</button>
+        <button class="filter-btn" data-type="acopio">
+          <span class="dot dot-acopio"></span> Acopios
+        </button>
+        <button class="filter-btn" data-type="refugio">
+          <span class="dot dot-refugio"></span> Refugios
+        </button>
+      </div>
+
+      <div class="list-header">
+        <span id="countLabel">Cargando...</span>
+        <span class="list-hint">Haz clic para centrar</span>
+      </div>
+
+      <ul class="point-list" id="pointList">
+        <li class="loading-item">Cargando puntos...</li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <p>Acopios se publican al instante con sello "sin verificar". Refugios se revisan antes. Última actualización: <span id="lastUpdate">—</span></p>
+        <a href="SHEET_URL" target="_blank" id="sheetLink">Ver hoja de datos</a>
+      </div>
+    </aside>
+
+    <!-- MAP -->
+    <main class="map-container">
+      <div id="map"></div>
+
+      <div class="map-error" id="mapError" style="display:none">
+        <strong>El mapa no cargó.</strong>
+        Falta la clave de Google Maps o la facturación. Revisa el README, paso 3.
+      </div>
+
+      <div class="map-legend">
+        <span><span class="dot dot-acopio"></span> Acopio</span>
+        <span><span class="dot dot-refugio"></span> Refugio</span>
+        <span><span class="dot dot-unv-legend"></span> Sin verificar</span>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- MODAL: REPORTAR -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Reportar un punto</h2>
+        <button class="modal-close" id="closeModalBtn">✕</button>
+      </div>
+      <p class="modal-note">Los acopios aparecen al instante con sello "sin verificar". Los refugios se revisan antes de publicarse. No publiques información sin confirmar.</p>
+
+      <form id="reportForm">
+
+        <!-- Honeypot anti-spam: invisible para humanos, tentador para bots -->
+        <div class="hp" aria-hidden="true">
+          <label for="website">No llenar este campo</label>
+          <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label for="tipo">Tipo de punto *</label>
+          <select id="tipo" required>
+            <option value="">Selecciona...</option>
+            <option value="acopio">Centro de acopio</option>
+            <option value="refugio">Refugio disponible</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="nombre">Nombre del lugar *</label>
+          <input type="text" id="nombre" placeholder="Ej: Escuela Simón Bolívar" required />
+        </div>
+
+        <div class="form-group">
+          <label for="estado">Estado *</label>
+          <select id="estado" required>
+            <option value="">Selecciona...</option>
+            <option>Carabobo</option>
+            <option>Yaracuy</option>
+            <option>Aragua</option>
+            <option>Cojedes</option>
+            <option>Falcón</option>
+            <option>Lara</option>
+            <option>Portuguesa</option>
+            <option>Miranda</option>
+            <option>Caracas (Distrito Capital)</option>
+            <option>La Guaira (Vargas)</option>
+            <option>Trujillo</option>
+            <option>Otro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="direccion">Dirección o referencia *</label>
+          <input type="text" id="direccion" placeholder="Ej: Av. Bolívar, frente al mercado" required />
+        </div>
+
+        <!-- MARCAR EL PUNTO EN EL MAPA -->
+        <div class="form-group">
+          <label>Marca el punto en el mapa *</label>
+          <div id="reportMap" class="report-map"></div>
+          <p class="report-map-note" id="reportMapNote">Toca el mapa donde queda el punto.</p>
+          <input type="hidden" id="lat" />
+          <input type="hidden" id="lng" />
+        </div>
+
+        <div class="form-group">
+          <label for="contacto">Contacto (teléfono o Instagram)</label>
+          <input type="text" id="contacto" placeholder="Ej: @nombreOrganizacion o 0412-000-0000" />
+        </div>
+
+        <div class="form-group" id="acopioFields">
+          <label for="necesidades">¿Qué están recibiendo?</label>
+          <textarea id="necesidades" rows="2" placeholder="Ej: agua, medicamentos, ropa limpia, alimentos no perecederos"></textarea>
+        </div>
+
+        <div class="form-group" id="refugioFields" style="display:none">
+          <label for="capacidad">Capacidad aproximada</label>
+          <input type="text" id="capacidad" placeholder="Ej: 40 personas" />
+        </div>
+
+        <div class="form-group">
+          <label for="fuente">¿Cómo lo verificaste? *</label>
+          <input type="text" id="fuente" placeholder="Ej: fui personalmente, me lo dijo alguien de confianza..." required />
+        </div>
+
+        <div class="form-group">
+          <label for="reporterName">Tu nombre (no se publica)</label>
+          <input type="text" id="reporterName" placeholder="Para contactarte si hay dudas" />
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">Enviar reporte</button>
+        <p class="form-disclaimer">Los refugios no se publican sin revisar. Revisamos cada reporte de refugio antes de mostrarlo en el mapa.</p>
+      </form>
+
+      <div class="form-success" id="formSuccess" style="display:none">
+        <div class="success-icon">✓</div>
+        <h3>Reporte recibido</h3>
+        <p id="successMsg">Gracias por ayudar.</p>
+        <button class="btn-report" id="newReportBtn">Reportar otro punto</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <!-- Reemplaza YOUR_GOOGLE_MAPS_API_KEY con tu clave real (ver README, paso 3) -->
+  <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBqliQrNiCwE-w0kddGQQbVxbv29qXbCtU&callback=initMap">
+  </script>
+</body>
+</html>
