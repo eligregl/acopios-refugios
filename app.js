@@ -467,7 +467,7 @@ function darkMapStyles() {
     { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0F1923' }] },
     { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#243448' }] },
     { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#C0392B' }] },
-    { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#E8EDF2' }] },
+    { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '' }] },
     { featureType: 'poi', stylers: [{ visibility: 'off' }] },
     { featureType: 'transit', stylers: [{ visibility: 'off' }] },
   ];
