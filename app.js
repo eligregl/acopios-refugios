@@ -193,7 +193,7 @@ function addMarker(point) {
     title: point.nombre,
     icon: {
       path: google.maps.SymbolPath.CIRCLE,
-      scale: 9,
+      scale: 11,
       fillColor: fill,
       fillOpacity: 1,
       strokeColor: unverified ? typeColor : '#0F1923',
@@ -201,20 +201,19 @@ function addMarker(point) {
     },
   });
 
-  const badge = unverified
-    ? '<span style="display:inline-block;font-size:9px;letter-spacing:.04em;background:#7A95B0;color:#0F1923;padding:1px 5px;border-radius:2px;margin-left:4px;vertical-align:middle">SIN VERIFICAR</span>'
-    : '';
+  const badge = unverified ? '<span class="iw-badge">SIN VERIFICAR</span>' : '';
 
   const infoContent = `
-    <div style="font-family:'IBM Plex Sans',sans-serif;max-width:230px;padding:4px 0">
-      <strong style="font-size:13px">${icon} ${esc(point.nombre)}</strong>${badge}
-      <p style="font-size:11px;color:#666;margin:4px 0">${esc(point.estado)} — ${esc(point.direccion)}</p>
-      ${point.necesidades ? `<p style="font-size:11px;margin:4px 0"><b>Reciben:</b> ${esc(point.necesidades)}</p>` : ''}
-      ${point.capacidad ? `<p style="font-size:11px;margin:4px 0"><b>Capacidad:</b> ${esc(point.capacidad)}</p>` : ''}
-      ${point.contacto ? `<p style="font-size:11px;color:#2563A8;margin:4px 0">${esc(point.contacto)}</p>` : ''}
+    <div class="iw">
+      <div class="iw-title">${icon} ${esc(point.nombre)}${badge}</div>
+      <div class="iw-estado">${esc(point.estado)}</div>
+      <div class="iw-dir">${esc(point.direccion)}</div>
+      ${point.necesidades ? `<div class="iw-row"><b>Reciben:</b> ${esc(point.necesidades)}</div>` : ''}
+      ${point.capacidad ? `<div class="iw-row"><b>Capacidad:</b> ${esc(point.capacidad)}</div>` : ''}
+      ${point.contacto ? `<div class="iw-contact">${esc(point.contacto)}</div>` : ''}
     </div>`;
 
-  const infoWindow = new google.maps.InfoWindow({ content: infoContent });
+  const infoWindow = new google.maps.InfoWindow({ content: infoContent, maxWidth: 340 });
   marker.addListener('click', () => infoWindow.open(map, marker));
   markers.push(marker);
 }

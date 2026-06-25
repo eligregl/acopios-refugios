@@ -9,7 +9,7 @@
   --fondo:   #0F1923;
   --panel:   #162030;
   --borde:   #243448;
-  --texto:   #7f8285;
+  --texto:   #E8EDF2;
   --muted:   #7A95B0;
   --acopio:  #F4C430;
   --refugio: #3FBFA6;
@@ -172,9 +172,10 @@ header {
 
 .point-contact {
   font-family: var(--font-mono);
-  font-size: .65rem;
-  color: var(--azul-s);
+  font-size: .72rem;
+  color: #6BA8E0;
   margin-top: .3rem;
+  word-break: break-word;
 }
 
 .loading-item {
@@ -470,6 +471,61 @@ header {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+/* Globos del mapa (Google InfoWindow): más grandes y legibles */
+.gm-style .gm-style-iw-d { overflow: visible !important; }
+.iw {
+  font-family: var(--font-sans);
+  width: 300px;
+  max-width: 80vw;
+  padding: 4px 6px 6px;
+  color: #0F1923;
+}
+.iw-title {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: #0F1923;
+}
+.iw-badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: .04em;
+  background: #E2E8EF;
+  color: #3A4754;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.iw-estado {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #5A6B7A;
+  margin-top: 7px;
+}
+.iw-dir {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #1F2D3A;
+  margin-top: 4px;
+}
+.iw-row {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1F2D3A;
+  margin-top: 7px;
+}
+.iw-row b { color: #0F1923; }
+.iw-contact {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1565A0;
+  margin-top: 9px;
+  word-break: break-word;
 }
 
 /* Banner de error cuando falta la clave de Google Maps */

@@ -1,10 +1,10 @@
 # Venezuela Resiste — Acopios y Refugios
 
-Mapa colaborativo. Cualquiera reporta un punto y marca su ubicación en el mapa. Los acopios salen al instante con sello "sin verificar". Los refugios esperan tu revisión antes de publicarse.
+Mapa colaborativo. Cualquiera reporta un punto y marca su ubicación en el mapa. Los acopios salen al instante con sello "sin verificar". Los refugios esperan revisión antes de publicarse.
 
 ## Cómo funciona la moderación
 
-| Tipo | Al enviarse | Se ve en el mapa | Tu trabajo |
+| Tipo | Al enviarse | Se ve en el mapa | Trabajo manual |
 |------|-------------|------------------|------------|
-| Acopio | `por_verificar` | Sí, de una, con sello gris "sin verificar" | Confirmas y cambias a `aprobado` (quita el sello), o borras si es falso |
-| Refugio | `pendiente` | No, hasta que tú lo apruebes | Revisas y cambias a `aprobado` |
+| Acopio | `por_verificar` | Sí, de una, con sello gris "sin verificar" | Se confirma y se cambia a `aprobado` |
+| Refugio | `pendiente` | No, hasta que se apruebes | Se revisa y cambia a `aprobado` |
