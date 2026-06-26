@@ -87,7 +87,46 @@ window.initMap = function () {
   });
 
   loadPoints();
+  locateUser();
 };
+
+// ============================================================
+//  UBICACIÓN DEL USUARIO (geolocalización del navegador)
+//  Pide permiso al abrir. Si acepta, centra el mapa en su ubicación.
+//  Si niega o no hay señal, el mapa se queda centrado en Venezuela.
+// ============================================================
+
+let userMarker = null;
+
+function locateUser() {
+  if (!('geolocation' in navigator) || !map) return;
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const u = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      map.setCenter(u);
+      map.setZoom(12);
+
+      if (userMarker) userMarker.setMap(null);
+      userMarker = new google.maps.Marker({
+        position: u,
+        map,
+        title: 'Tu ubicación',
+        zIndex: 9999,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#2E86FF',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+      });
+    },
+    () => { /* permiso negado o sin señal: se queda en el centro por defecto */ },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+  );
+}
 
 // Google llama a esta función si la clave es inválida o falta facturación
 window.gm_authFailure = showMapError;
