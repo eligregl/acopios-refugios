@@ -15,6 +15,9 @@ var PRIVATE_SHEET_ID = 'PEGA_AQUI_EL_ID_DE_TU_HOJA_PRIVADA';
 // 2) Clave SECRETA de Cloudflare Turnstile (server-side). Ver checklist.
 var TURNSTILE_SECRET = 'PEGA_AQUI_TU_CLAVE_SECRETA_DE_TURNSTILE';
 
+// User-Agent exigido por Nominatim (OSM). El navegador no puede enviarlo en fetch.
+var NOMINATIM_USER_AGENT = 'VenezuelaResiste/1.0 (https://acopios-refugios.vercel.app; acopios-refugios map)';
+
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
@@ -32,6 +35,19 @@ function doPost(e) {
     var id = Utilities.getUuid();
     var ts = data.timestamp || new Date().toISOString();
     var estadoMod = data.tipo === 'acopio' ? 'por_verificar' : 'pendiente';
+
+    // Primero la hoja privada: si falla, no escribimos nada en la pública.
+    var priv = getPrivateModeracionSheet();
+    priv.appendRow([
+      id,
+      ts,
+      data.tipo,
+      data.nombre,
+      data.direccion,
+      data.reporter || '',       // nombre de quien reporta (privado)
+      data.verificacion || '',   // cómo lo verificó (privado)
+      data.contacto || ''
+    ]);
 
     // --- HOJA PÚBLICA: 14 columnas, SIN datos personales ---
     // reporter va vacío; fuente queda como etiqueta genérica.
@@ -53,19 +69,7 @@ function doPost(e) {
       estadoMod
     ]);
 
-    // --- HOJA PRIVADA: datos sensibles, fuera del alcance público ---
-    var priv = SpreadsheetApp.openById(PRIVATE_SHEET_ID).getSheetByName('Moderacion');
-    priv.appendRow([
-      id,
-      ts,
-      data.tipo,
-      data.nombre,
-      data.direccion,
-      data.reporter || '',       // nombre de quien reporta (privado)
-      data.verificacion || '',   // cómo lo verificó (privado)
-      data.contacto || ''
-    ]);
-
+    CacheService.getScriptCache().remove('puntos_publicos');
     return ok();
   } catch (err) {
     return fail(err.message);
@@ -122,14 +126,51 @@ function fail(msg) {
 // ============================================================
 
 function doGet(e) {
-  var json = JSON.stringify(getPublicPoints());
-  var callback = (e && e.parameter && e.parameter.callback) ? e.parameter.callback : '';
-  if (callback) {
+  var params = (e && e.parameter) ? e.parameter : {};
+  var callback = params.callback || '';
+  var payload = (params.action === 'geocode') ? geocodeQuery(params.q || '') : getPublicPoints();
+  var json = JSON.stringify(payload);
+  if (callback && isValidJsonpCallback(callback)) {
     return ContentService
       .createTextOutput(callback + '(' + json + ')')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
+}
+
+// JSONP: solo identificadores JS válidos (evita inyección en ?callback=).
+function isValidJsonpCallback(name) {
+  return /^[$A-Z_][0-9A-Z_$]*$/i.test(String(name));
+}
+
+function getPrivateModeracionSheet() {
+  if (!PRIVATE_SHEET_ID || PRIVATE_SHEET_ID.indexOf('PEGA_AQUI') >= 0) {
+    throw new Error('private_sheet_not_configured');
+  }
+  var sheet = SpreadsheetApp.openById(PRIVATE_SHEET_ID).getSheetByName('Moderacion');
+  if (!sheet) throw new Error('private_sheet_missing');
+  return sheet;
+}
+
+// Proxy de geocodificación: Nominatim exige User-Agent propio (el navegador no puede enviarlo).
+function geocodeQuery(q) {
+  q = String(q || '').trim();
+  if (!q || q.length > 400) return [];
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
+  try {
+    var resp = UrlFetchApp.fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': NOMINATIM_USER_AGENT
+      },
+      muteHttpExceptions: true
+    });
+    if (resp.getResponseCode() !== 200) return [];
+    var data = JSON.parse(resp.getContentText());
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    return [];
+  }
 }
 
 function getPublicPoints() {

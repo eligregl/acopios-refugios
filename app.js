@@ -165,9 +165,11 @@ async function loadPoints() {
   }
 }
 
-function fetchPointsJsonp() {
+let jsonpSeq = 0;
+
+function fetchJsonp(params, cbPrefix) {
   return new Promise((resolve, reject) => {
-    const cb = 'vrPoints_' + Date.now();
+    const cb = cbPrefix + Date.now() + '_' + (++jsonpSeq) + '_' + Math.random().toString(36).slice(2, 9);
     const script = document.createElement('script');
     const cleanup = () => {
       try { delete window[cb]; } catch (e) { window[cb] = undefined; }
@@ -176,9 +178,18 @@ function fetchPointsJsonp() {
     const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 12000);
     window[cb] = data => { clearTimeout(timer); cleanup(); resolve(Array.isArray(data) ? data : []); };
     script.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('jsonp error')); };
-    script.src = CONFIG.APPS_SCRIPT_URL + '?callback=' + cb + '&_=' + Date.now();
+    const qs = new URLSearchParams({ callback: cb, _: String(Date.now()), ...params });
+    script.src = CONFIG.APPS_SCRIPT_URL + '?' + qs.toString();
     document.body.appendChild(script);
   });
+}
+
+function fetchPointsJsonp() {
+  return fetchJsonp({}, 'vrPoints_');
+}
+
+function fetchGeocodeJsonp(q) {
+  return fetchJsonp({ action: 'geocode', q }, 'vrGeocode_');
 }
 
 // ============================================================
@@ -379,8 +390,9 @@ function clearReportMarker() {
 }
 
 // ============================================================
-//  BÚSQUEDA DE DIRECCIÓN (geocodificación gratis con OpenStreetMap)
-//  Escribe la dirección -> la busca -> coloca el pin. Sin costo de Google.
+//  BÚSQUEDA DE DIRECCIÓN (geocodificación vía Apps Script → Nominatim/OSM)
+//  Nominatim exige User-Agent propio; el navegador no puede enviarlo en fetch,
+//  así que la búsqueda pasa por el proxy del Apps Script.
 // ============================================================
 
 async function geocodeAddress() {
@@ -397,9 +409,7 @@ async function geocodeAddress() {
   if (note) note.textContent = 'Buscando...';
 
   try {
-    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    const data = await res.json();
+    const data = await fetchGeocodeJsonp(q);
     if (!data || !data.length) {
       if (note) note.textContent = 'No encontré esa dirección. Agrega ciudad y país, o toca el mapa para marcar a mano.';
       return;
