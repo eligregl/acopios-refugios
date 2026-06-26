@@ -473,6 +473,35 @@ header {
   overflow: hidden;
 }
 
+/* Buscador de dirección en el formulario */
+.geo-search {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: .5rem;
+}
+.geo-search input { flex: 1; }
+.geo-search button {
+  background: var(--azul-s);
+  color: #fff;
+  border: none;
+  padding: 0 .9rem;
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  border-radius: 2px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.geo-search button:hover { background: #2f74c0; }
+.geo-search button:disabled { background: var(--borde); cursor: not-allowed; }
+
+/* Nota de campo privado en el formulario */
+.field-priv {
+  font-size: .68rem;
+  color: var(--refugio);
+  margin-top: .35rem;
+  line-height: 1.4;
+}
+
 /* Globos del mapa (Google InfoWindow): más grandes y legibles */
 .gm-style .gm-style-iw-d { overflow: visible !important; }
 .iw {

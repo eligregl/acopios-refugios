@@ -146,16 +146,16 @@ setTimeout(function () {
 }, 5000);
 
 // ============================================================
-//  CARGAR PUNTOS DESDE GOOGLE SHEETS (publicado como CSV)
+//  CARGAR PUNTOS — vía proxy del Apps Script (lectura segura)
+//  El sitio ya NO lee la hoja directa. El Apps Script devuelve
+//  solo filas visibles y solo columnas públicas, así la hoja
+//  puede estar PRIVADA. Se usa JSONP para evitar CORS.
 // ============================================================
 
 async function loadPoints() {
   try {
-    const url = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Puntos`;
-    const res = await fetch(url);
-    const csv = await res.text();
-
-    allPoints = parseCSV(csv);
+    const points = await fetchPointsJsonp();
+    allPoints = points.filter(p => p.lat && p.lng);
     renderAll();
     updateTimestamp();
   } catch (err) {
@@ -165,35 +165,20 @@ async function loadPoints() {
   }
 }
 
-function parseCSV(csv) {
-  const lines = csv.trim().split('\n');
-  if (lines.length < 2) return [];
-
-  // Encabezados: id, tipo, nombre, estado, direccion, lat, lng, contacto,
-  // necesidades, capacidad, fuente, reporter, timestamp, estado_moderacion
-  const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
-
-  return lines.slice(1)
-    .map(line => {
-      const values = parseCSVLine(line);
-      const obj = {};
-      headers.forEach((h, i) => { obj[h] = (values[i] || '').replace(/"/g, '').trim(); });
-      return obj;
-    })
-    .filter(isVisible);
-}
-
-function parseCSVLine(line) {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') { inQuotes = !inQuotes; }
-    else if (line[i] === ',' && !inQuotes) { result.push(current); current = ''; }
-    else { current += line[i]; }
-  }
-  result.push(current);
-  return result;
+function fetchPointsJsonp() {
+  return new Promise((resolve, reject) => {
+    const cb = 'vrPoints_' + Date.now();
+    const script = document.createElement('script');
+    const cleanup = () => {
+      try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 12000);
+    window[cb] = data => { clearTimeout(timer); cleanup(); resolve(Array.isArray(data) ? data : []); };
+    script.onerror = () => { clearTimeout(timer); cleanup(); reject(new Error('jsonp error')); };
+    script.src = CONFIG.APPS_SCRIPT_URL + '?callback=' + cb + '&_=' + Date.now();
+    document.body.appendChild(script);
+  });
 }
 
 // ============================================================
@@ -387,9 +372,54 @@ function clearReportMarker() {
   if (reportMarker) { reportMarker.setMap(null); reportMarker = null; }
   document.getElementById('lat').value = '';
   document.getElementById('lng').value = '';
+  const search = document.getElementById('geoSearch');
+  if (search) search.value = '';
   const note = document.getElementById('reportMapNote');
-  if (note) note.textContent = 'Toca el mapa donde queda el punto.';
+  if (note) note.textContent = 'Escribe la dirección y toca Buscar. Luego ajusta el pin si hace falta.';
 }
+
+// ============================================================
+//  BÚSQUEDA DE DIRECCIÓN (geocodificación gratis con OpenStreetMap)
+//  Escribe la dirección -> la busca -> coloca el pin. Sin costo de Google.
+// ============================================================
+
+async function geocodeAddress() {
+  const q = document.getElementById('geoSearch').value.trim();
+  const note = document.getElementById('reportMapNote');
+  if (!q) { if (note) note.textContent = 'Escribe una dirección para buscar.'; return; }
+  if (!window.google || !google.maps || !reportMap) {
+    if (note) note.textContent = 'El mapa no cargó. Revisa la clave de Google Maps.';
+    return;
+  }
+
+  const btn = document.getElementById('geoSearchBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Buscando...'; }
+  if (note) note.textContent = 'Buscando...';
+
+  try {
+    const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const data = await res.json();
+    if (!data || !data.length) {
+      if (note) note.textContent = 'No encontré esa dirección. Agrega ciudad y país, o toca el mapa para marcar a mano.';
+      return;
+    }
+    const latLng = new google.maps.LatLng(parseFloat(data[0].lat), parseFloat(data[0].lon));
+    reportMap.setCenter(latLng);
+    reportMap.setZoom(16);
+    setReportMarker(latLng);
+    if (note) note.textContent = 'Listo. Si el pin no quedó exacto, arrástralo o toca el mapa para ajustar.';
+  } catch (err) {
+    if (note) note.textContent = 'No se pudo buscar ahora. Toca el mapa para marcar el punto.';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Buscar'; }
+  }
+}
+
+document.getElementById('geoSearchBtn').addEventListener('click', geocodeAddress);
+document.getElementById('geoSearch').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); geocodeAddress(); }
+});
 
 // ============================================================
 //  ENVÍO DE FORMULARIO -> GOOGLE APPS SCRIPT
@@ -413,13 +443,20 @@ document.getElementById('reportForm').addEventListener('submit', async function 
     return;
   }
 
+  // CAPTCHA: token de Cloudflare Turnstile (obligatorio)
+  const captchaEl = document.querySelector('[name="cf-turnstile-response"]');
+  const captchaToken = captchaEl ? captchaEl.value : '';
+  if (!captchaToken) {
+    alert('Completa la verificación de seguridad antes de enviar.');
+    return;
+  }
+
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
   btn.textContent = 'Enviando...';
 
-  // Acopio sale al instante (por_verificar). Refugio espera aprobación (pendiente).
-  const estadoModeracion = tipo === 'acopio' ? 'por_verificar' : 'pendiente';
-
+  // El estado de moderación lo decide el servidor (Apps Script), no el cliente.
+  // Los datos personales (reporter, verificación) van marcados para la hoja privada.
   const data = {
     tipo,
     nombre:       document.getElementById('nombre').value,
@@ -430,10 +467,10 @@ document.getElementById('reportForm').addEventListener('submit', async function 
     contacto:     document.getElementById('contacto').value,
     necesidades:  document.getElementById('necesidades').value,
     capacidad:    document.getElementById('capacidad').value,
-    fuente:       document.getElementById('fuente').value,
+    verificacion: document.getElementById('fuente').value,
     reporter:     document.getElementById('reporterName').value,
+    captchaToken,
     timestamp:    new Date().toISOString(),
-    estado_moderacion: estadoModeracion,
   };
 
   try {
@@ -450,6 +487,7 @@ document.getElementById('reportForm').addEventListener('submit', async function 
   } catch (err) {
     btn.disabled = false;
     btn.textContent = 'Enviar reporte';
+    if (window.turnstile) turnstile.reset();
     alert('Error al enviar. Intenta de nuevo o escríbenos directamente.');
   }
 });
@@ -476,6 +514,7 @@ document.getElementById('newReportBtn').addEventListener('click', () => {
   document.getElementById('formSuccess').style.display = 'none';
   document.getElementById('submitBtn').disabled = false;
   document.getElementById('submitBtn').textContent = 'Enviar reporte';
+  if (window.turnstile) turnstile.reset();
 });
 
 // ============================================================

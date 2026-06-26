@@ -141,9 +141,13 @@
 
         <!-- MARCAR EL PUNTO EN EL MAPA -->
         <div class="form-group">
-          <label>Marca el punto en el mapa *</label>
+          <label for="geoSearch">Busca la dirección *</label>
+          <div class="geo-search">
+            <input type="text" id="geoSearch" placeholder="Ej: Av. Bolívar, Valencia, Venezuela" />
+            <button type="button" id="geoSearchBtn">Buscar</button>
+          </div>
           <div id="reportMap" class="report-map"></div>
-          <p class="report-map-note" id="reportMapNote">Toca el mapa donde queda el punto.</p>
+          <p class="report-map-note" id="reportMapNote">Escribe la dirección y toca Buscar. Luego, si hace falta, arrastra el pin o toca el mapa para ajustar.</p>
           <input type="hidden" id="lat" />
           <input type="hidden" id="lng" />
         </div>
@@ -166,15 +170,21 @@
         <div class="form-group">
           <label for="fuente">¿Cómo lo verificaste? *</label>
           <input type="text" id="fuente" placeholder="Ej: fui personalmente, me lo dijo alguien de confianza..." required />
+          <p class="field-priv">Privado: no se publica en el mapa, solo lo ve quien modera.</p>
         </div>
 
         <div class="form-group">
-          <label for="reporterName">Tu nombre (no se publica)</label>
+          <label for="reporterName">Tu nombre (privado)</label>
           <input type="text" id="reporterName" placeholder="Para contactarte si hay dudas" />
+          <p class="field-priv">Privado de verdad: no sale en el mapa ni en los datos públicos.</p>
+        </div>
+
+        <div class="form-group">
+          <div class="cf-turnstile" data-sitekey="TU_SITE_KEY_TURNSTILE" data-theme="dark"></div>
         </div>
 
         <button type="submit" class="btn-submit" id="submitBtn">Enviar reporte</button>
-        <p class="form-disclaimer">Los refugios no se publican sin revisar. Revisamos cada reporte de refugio antes de mostrarlo en el mapa.</p>
+        <p class="form-disclaimer">Tus datos personales se guardan en privado, no en el mapa público. Los refugios se revisan antes de mostrarse.</p>
       </form>
 
       <div class="form-success" id="formSuccess" style="display:none">
@@ -186,6 +196,8 @@
     </div>
   </div>
 
+  <!-- CAPTCHA anti-spam (Cloudflare Turnstile). Reemplaza TU_SITE_KEY_TURNSTILE arriba -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script src="app.js"></script>
   <!-- Reemplaza YOUR_GOOGLE_MAPS_API_KEY con tu clave real (ver README, paso 3) -->
   <script async defer
